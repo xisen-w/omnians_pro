@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Essay Structure Analyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        input[type="submit"] {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        input[type="submit"]:hover {
+            background-color: #218838;
+        }
+        h2 {
+            font-size: 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .paragraph {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .paragraph h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .paragraph p {
+            margin: 5px 0;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Essay Structure Analyzer</h1>
+        <form id="analysisForm">
+            <label for="research_question">Enter Research Question:</label>
+            <input type="text" id="research_question" name="research_question" placeholder="e.g., China's Economic Reform in the 19th century" required>
+            <input type="submit" value="Analyze">
+        </form>
+
+        <div id="output">
+            <h2>Sub-Questions</h2>
+            <ul id="sub_questions"></ul>
+
+            <h2>Essay Structure</h2>
+            <div id="essay_structure"></div>
+
+            <div id="error" class="error"></div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#analysisForm').on('submit', function(event) {
+                event.preventDefault();
+                $('#sub_questions').empty();
+                $('#essay_structure').empty();
+                $('#error').empty();
+
+                $.ajax({
+                    url: '/analyze',
+                    type: 'POST',
+                    data: $(this).serialize(),
+                    success: function(data) {
+                        if (data.error) {
+                            $('#error').text(data.error);
+                        } else {
+                            // Display Sub-Questions
+                            data.sub_questions.forEach(function(question) {
+                                $('#sub_questions').append('<li>' + question + '</li>');
+                            });
+
+                            // Access the essay_structure before iterating
+                            const essayStructure = data.essay_structure.essay_structure;
+
+                            // Display Essay Structure
+                            essayStructure.forEach(function(paragraph) {
+                                const paragraphHtml = `
+                                    <div class="paragraph">
+                                        <h3>${paragraph.section}</h3>
+                                        <p><strong>Purpose:</strong> ${paragraph.purpose}</p>
+                                        <p><strong>Evidence Needed:</strong> ${paragraph.evidence_needed}</p>
+                                        <p><strong>Argument Development:</strong> ${paragraph.argument_development}</p>
+                                    </div>
+                                `;
+                                $('#essay_structure').append(paragraphHtml);
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        $('#error').text('An error occurred: ' + xhr.responseText);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
