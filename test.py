@@ -4,7 +4,7 @@ from fundations.LLMResponsePro import LLMResponsePro
 from pydantic import BaseModel, Field
 
 # Initialize the LLMResponsePro instance with the desired model name
-model_name = "gpt-4o-2024-08-06"  # Replace with your desired model name
+model_name = "gpt-4o-mini-2024-07-18"  # Replace with your desired model name
 llm_response_pro = LLMResponsePro(model_name)
 
 # Define a Pydantic schema with descriptive fields
