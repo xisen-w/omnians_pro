@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from fundations.foundation import LLMResponse
 import os
 
-os.environ['OPENAI_API_KEY'] = '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'
+os.environ['OPENAI_API_KEY'] = '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'
 
 class LLMResponsePro(LLMResponse):
     def __init__(self, model_name):

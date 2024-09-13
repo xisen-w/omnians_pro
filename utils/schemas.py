@@ -14,3 +14,18 @@ class ParagraphSchema(BaseModel):
 # Schema for Essay Structure
 class EssayStructureSchema(BaseModel):
     essay_structure: list[ParagraphSchema] = Field(..., description="List of paragraphs that structure the essay.")
+
+from pydantic import BaseModel, Field
+from typing import List
+
+# Schema for individual relationships between literature
+class LiteratureRelationship(BaseModel):
+    theme: str = Field(..., description="The theme that groups related works together.")
+    support: List[str] = Field(..., description="List of literature that supports each other under this theme.")
+    reject: List[str] = Field(..., description="List of literature that contradicts or rejects each other under this theme.")
+    add_on: List[str] = Field(..., description="List of literature that builds upon or extends other works under this theme.")
+    investigate: List[str] = Field(..., description="List of literature that introduces new questions or areas of investigation under this theme.")
+
+# Schema for the relationship analysis
+class LiteratureRelationshipSchema(BaseModel):
+    relationships: List[LiteratureRelationship] = Field(..., description="Detailed relationships between literature grouped by themes.")
