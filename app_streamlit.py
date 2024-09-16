@@ -2,7 +2,9 @@ import streamlit as st
 import sys
 import os
 import logging
-from utils.schemas import SubQuestionSchema, EssayStructureSchema, LiteratureRelationshipSchema
+from utils.schemas import SubQuestionSchema, EssayStructureSchema, LiteratureRelationshipSchema, ParagraphSchema
+import tempfile
+import re
 
 # Add this near the top of your script, after the imports
 logging.basicConfig(level=logging.INFO)
@@ -21,14 +23,21 @@ from fundations.open_ai_RAG import Citation_Retriever
 from Agents.critiqueAgent import CritiqueAgent
 from Agents.finaliseEssayWriter import FinaliseEssayWriter
 
+# Helper function to get filename from path
+def get_filename(path):
+    return os.path.basename(path)
+
 # Set the title of the app
 st.title("Research Essay Assistant")
 
 # Input for research question
 research_question = st.text_input("Enter your research question:")
 
-# Input for PDFs or links
-pdf_links = st.text_area("Enter PDF file paths or links (one per line):")
+# Input for documents or links
+doc_links = st.text_area("Enter document URLs or local file paths (one per line or separated by semicolons):")
+
+# File uploader for documents
+uploaded_files = st.file_uploader("Or upload document files", type=["pdf", "txt", "doc", "docx"], accept_multiple_files=True)
 
 # Choose Literature Analysis Format
 analysis_format = st.multiselect(
@@ -43,187 +52,228 @@ if st.button("Process"):
     
     try:
         # Step 1: Generate sub-questions using InsightAnalyst
+        st.header("Step 1: Generate Sub-Questions")
         model_name = "gpt-4o-mini-2024-07-18"  # Replace with your actual model name
         insight_analyst = InsightAnalyst(model_name)
         sub_questions = insight_analyst.generate_sub_questions(research_question)
         
         # Display sub-questions in a structured manner
-        st.subheader("Sub-Questions:")
         sub_questions_schema = SubQuestionSchema(sub_questions=sub_questions)
         for i, question in enumerate(sub_questions_schema.sub_questions, 1):
             st.write(f"{i}. {question}")
 
-    except Exception as e:
-        st.error(f"An error occurred while generating sub-questions: {str(e)}")
-        st.stop()
-
-    # Split the input into a list
-    pdf_files = pdf_links.splitlines()
-
-    # Step 2: Structure the essay using StructureOutliner
-    outliner = SR(model_name)
-    essay_structure = outliner.structure_essay(research_question, sub_questions)
-    
-    # Display essay structure in a structured manner
-    st.subheader("Essay Structure:")
-    essay_structure_schema = EssayStructureSchema(essay_structure=essay_structure)
-    for i, paragraph in enumerate(essay_structure_schema.essay_structure, 1):
-        st.write(f"Paragraph {i}:")
-        st.write(f"- Section: {paragraph.section}")
-        st.write(f"- Purpose: {paragraph.purpose}")
-        st.write(f"- Evidence Needed: {paragraph.evidence_needed}")
-        st.write(f"- Argument Development: {paragraph.argument_development}")
-        st.write("---")
-
-    # Step 3: Summarize PDFs using PDF Summary Agent
-    with st.spinner("Summarizing PDFs..."):
-        pdf_summary_agent = PDFSummaryAgent(model_name)
-        background_info = ""
-        for pdf_file in pdf_files:
-            try:
-                st.write(f"Summarizing PDF: {pdf_file}")
-                logging.info(f"Starting to summarize PDF: {pdf_file}")
-                if not os.path.exists(pdf_file):
-                    raise FileNotFoundError(f"PDF file not found: {pdf_file}")
-                summary = pdf_summary_agent.summarize_pdf(pdf_path=pdf_file)
-                st.write(f"Summary: {summary}")
-                background_info += f"\nSummary from {pdf_file}:\n{summary}\n"
-                logging.info(f"Successfully summarized PDF: {pdf_file}")
-            except Exception as e:
-                logging.error(f"Error processing PDF {pdf_file}: {str(e)}")
-                st.error(f"Error processing PDF {pdf_file}: {str(e)}")
-    
-    # Step 4: Revise the structure using StructureRevisor
-    st.subheader("Compiling Background Information...")
-    st.write(background_info)
-    revisor = StructureRevisor(model_name)
-    revised_structure = revisor.revise_outline(research_question, essay_structure, background_info)
-    st.subheader("Revised Essay Structure:")
-    st.write(revised_structure)
-
-    # Step 5: Analyze literature using ContextAnalyst
-    literature_list = [pdf_file.split('/')[-1] for pdf_file in pdf_files]  # Extract titles from file paths
-    context_analyst = ContextAnalyst(model_name)
-    
-    relationship_analysis_str = ""
-
-    if 'Structured' in analysis_format:
-        relationship_analysis = context_analyst.analyze_literature_structured(background_info, literature_list)
-        st.subheader("Literature Relationship Analysis (Structured):")
-        if relationship_analysis:
-            for relationship in relationship_analysis:
-                st.write(f"Theme: {relationship.theme}")
-                st.write("Supporting Literature:")
-                for support in relationship.support:
-                    st.write(f"- {support}")
-                st.write("Contradicting Literature:")
-                for reject in relationship.reject:
-                    st.write(f"- {reject}")
-                st.write("Extended Literature:")
-                for add_on in relationship.add_on:
-                    st.write(f"- {add_on}")
-                st.write("New Investigations:")
-                for investigate in relationship.investigate:
-                    st.write(f"- {investigate}")
-                st.write("---")
-        else:
-            st.write("No structured analysis available.")
+        # Process document links and uploaded files
+        doc_sources = []
+        if doc_links:
+            doc_sources = [item.strip() for sublist in [re.split(r'[;\n]', line) for line in doc_links.split('\n')] for item in sublist if item.strip()]
         
-        # Convert structured analysis to string
-        structured_str = "\n".join([
-            f"Theme: {r.theme}\n"
-            f"Supporting: {', '.join(r.support)}\n"
-            f"Contradicting: {', '.join(r.reject)}\n"
-            f"Extended: {', '.join(r.add_on)}\n"
-            f"New Investigations: {', '.join(r.investigate)}\n"
-            for r in relationship_analysis
-        ])
-        relationship_analysis_str += "Structured Analysis:\n" + structured_str + "\n\n"
+        # Create temporary files for uploaded documents
+        temp_files = []
+        for uploaded_file in uploaded_files:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as tmp_file:
+                tmp_file.write(uploaded_file.getvalue())
+                temp_files.append(tmp_file.name)
+        
+        doc_sources.extend(temp_files)
 
-    if 'Essay' in analysis_format:
-        essay_analysis = context_analyst.analyze_literature_essay(background_info, literature_list)
-        st.subheader("Literature Relationship Analysis (Essay):")
-        st.write(essay_analysis)
-        relationship_analysis_str += "Essay Analysis:\n" + essay_analysis
+        # Step 2: Structure the essay using StructureOutliner
+        st.header("Step 2: Initial Essay Structure")
+        outliner = SR(model_name)
+        essay_structure = outliner.structure_essay(research_question, sub_questions)
+        
+        # Display essay structure in a structured manner
+        essay_structure_schema = EssayStructureSchema(essay_structure=essay_structure)
+        for i, paragraph in enumerate(essay_structure_schema.essay_structure, 1):
+            st.subheader(f"Paragraph {i}:")
+            st.write(f"- Section: {paragraph.section}")
+            st.write(f"- Purpose: {paragraph.purpose}")
+            st.write(f"- Evidence Needed: {paragraph.evidence_needed}")
+            st.write(f"- Argument Development: {paragraph.argument_development}")
+            st.write("---")
 
-    # Check if any analysis was performed
-    if not relationship_analysis_str:
-        st.warning("No literature analysis format was selected. Proceeding with original structure.")
-        relationship_analysis_str = "No literature analysis performed."
+        # Step 3: Summarize documents using Summary Agent
+        st.header("Step 3: Document Summaries")
+        with st.spinner("Summarizing documents..."):
+            summary_agent = PDFSummaryAgent(model_name)
+            background_info = ""
+            for doc_source in doc_sources:
+                try:
+                    doc_name = get_filename(doc_source)
+                    st.subheader(f"Summarizing document: {doc_name}")
+                    logging.info(f"Starting to summarize document: {doc_name}")
+                    summary = summary_agent.summarize_pdf(pdf_path=doc_source)
+                    st.write(summary)
+                    background_info += f"\nSummary from {doc_name}:\n{summary}\n"
+                    logging.info(f"Successfully summarized document: {doc_name}")
+                except Exception as e:
+                    logging.error(f"Error processing document {doc_name}: {str(e)}")
+                    st.error(f"Error processing document {doc_name}: {str(e)}")
+        
+        # Step 4: Revise the structure using StructureRevisor
+        st.header("Step 4: Revised Essay Structure")
+        st.subheader("Background Information:")
+        st.write(background_info)
+        revisor = StructureRevisor(model_name)
+        revised_structure = revisor.revise_outline(research_question, essay_structure, background_info).essay_structure
+        
+        # Display revised structure in a structured manner
+        try:
+            revised_structure_schema = EssayStructureSchema(essay_structure=revised_structure)
+            for i, paragraph in enumerate(revised_structure_schema.essay_structure, 1):
+                st.subheader(f"Paragraph {i}:")
+                st.write(f"- Section: {paragraph.section}")
+                st.write(f"- Purpose: {paragraph.purpose}")
+                st.write(f"- Evidence Needed: {paragraph.evidence_needed}")
+                st.write(f"- Argument Development: {paragraph.argument_development}")
+                st.write("---")
+        except Exception as e:
+            st.error(f"Error displaying revised structure: {str(e)}")
+            logging.error(f"Error displaying revised structure: {str(e)}", exc_info=True)
 
-    # Step 6: Further Revise With Better Literature Analysis
-    st.subheader("Revising structure based on literature analysis...")
-    revised_structure_pro = revisor.revise_outline(research_question, revised_structure, relationship_analysis_str)
-    st.subheader("Final Revised Structure:")
-    st.write(revised_structure_pro)
+        # Step 5: Analyze literature using ContextAnalyst
+        st.header("Step 5: Literature Analysis")
+        literature_list = [doc_file.split('/')[-1] for doc_file in doc_sources]
+        context_analyst = ContextAnalyst(model_name)
+        
+        relationship_analysis_str = ""
 
-    # Step 7: Retrieve evidence for each paragraph
-    citation_retriever = Citation_Retriever()
-    for pdf_path in pdf_files:
-        citation_retriever.create_embedding_for_pdf(pdf_path, chunk_mode="paragraph")
+        if 'Structured' in analysis_format:
+            st.subheader("Structured Analysis:")
+            relationship_analysis = context_analyst.analyze_literature_structured(background_info, literature_list)
+            if relationship_analysis:
+                for relationship in relationship_analysis:
+                    st.write(f"Theme: {relationship.theme}")
+                    st.write("Supporting Literature:")
+                    for support in relationship.support:
+                        st.write(f"- {support}")
+                    st.write("Contradicting Literature:")
+                    for reject in relationship.reject:
+                        st.write(f"- {reject}")
+                    st.write("Extended Literature:")
+                    for add_on in relationship.add_on:
+                        st.write(f"- {add_on}")
+                    st.write("New Investigations:")
+                    for investigate in relationship.investigate:
+                        st.write(f"- {investigate}")
+                    st.write("---")
+            else:
+                st.write("No structured analysis available.")
+            
+            structured_str = "\n".join([
+                f"Theme: {r.theme}\n"
+                f"Supporting: {', '.join(r.support)}\n"
+                f"Contradicting: {', '.join(r.reject)}\n"
+                f"Extended: {', '.join(r.add_on)}\n"
+                f"New Investigations: {', '.join(r.investigate)}\n"
+                for r in relationship_analysis
+            ])
+            relationship_analysis_str += "Structured Analysis:\n" + structured_str + "\n\n"
 
-    context_list = []
-    for paragraph in essay_structure:
-        evidence_needed = paragraph.evidence_needed
-        argument_development = paragraph.argument_development
-       
-        st.write(f"Retrieving context for: {evidence_needed}")
-        search_key = f"Argument to develop: {argument_development} Evidence Needed: {evidence_needed}"
-        answer, context, top_texts = citation_retriever.retrieve_and_ask(search_key)
-        context_pro = f"Answer:\n{answer}\nSources:\n{context}"
-        context_list.append(context_pro)
+        if 'Essay' in analysis_format:
+            st.subheader("Essay Analysis:")
+            essay_analysis = context_analyst.analyze_literature_essay(background_info, literature_list)
+            st.write(essay_analysis)
+            relationship_analysis_str += "Essay Analysis:\n" + essay_analysis
 
-    # Step 8: Compile the essay using ParagraphWriter
-    paragraph_writer = ParagraphWriter(model_name)
-    compiled_essay = paragraph_writer.compile_entire_essay(essay_structure, context_list)
+        # Step 6: Further Revise With Better Literature Analysis
+        st.header("Step 6: Final Revised Structure")
+        revised_structure_pro = revisor.revise_outline(research_question, revised_structure, relationship_analysis_str).essay_structure
+        
+        # Display final revised structure in a structured manner
+        final_structure_schema = EssayStructureSchema(essay_structure=revised_structure_pro)
+        for i, paragraph in enumerate(final_structure_schema.essay_structure, 1):
+            st.subheader(f"Paragraph {i}:")
+            st.write(f"- Section: {paragraph.section}")
+            st.write(f"- Purpose: {paragraph.purpose}")
+            st.write(f"- Evidence Needed: {paragraph.evidence_needed}")
+            st.write(f"- Argument Development: {paragraph.argument_development}")
+            st.write("---")
 
-    combined_paragraphs = []
-    combined_citations = []
+        # Step 7: Retrieve evidence for each paragraph
+        st.header("Step 7: Evidence Retrieval")
+        citation_retriever = Citation_Retriever()
+        for doc_path in doc_sources:
+            doc_name = get_filename(doc_path)
+            st.write(f"Creating embedding for: {doc_name}")
+            citation_retriever.create_embedding_for_pdf(doc_path, chunk_mode="paragraph")
 
-    for paragraph_compilation in compiled_essay.essay:
-        combined_paragraphs.append(paragraph_compilation.paragraph)
-        combined_citations.extend(paragraph_compilation.references)
+        context_list = []
+        for paragraph in essay_structure:
+            evidence_needed = paragraph.evidence_needed
+            argument_development = paragraph.argument_development
+           
+            st.subheader(f"Retrieving context for: {evidence_needed}")
+            search_key = f"Argument to develop: {argument_development} Evidence Needed: {evidence_needed}"
+            answer, context, top_texts = citation_retriever.retrieve_and_ask(search_key)
+            context_pro = f"Answer:\n{answer}\nSources:\n{context}"
+            context_list.append(context_pro)
+            st.write(context_pro)
 
-    st.subheader("Compiled Essay:")
-    st.write("\n\n".join(combined_paragraphs))
-    st.subheader("Citations:")
-    st.write("\n".join(combined_citations))
+        # Step 8: Compile the essay using ParagraphWriter
+        st.header("Step 8: Compile the Essay")
+        paragraph_writer = ParagraphWriter(model_name)
+        compiled_essay = paragraph_writer.compile_entire_essay(essay_structure, context_list)
 
-    # Step 9: Putting Essay Together 
-    whole_essay = "\n\n".join(combined_paragraphs) + "\n\n" + "\n".join(combined_citations)
-    essay_compiler_agent = EssayCompiler(model_name)
-    
-    # Convert essay_structure to a list of dictionaries
-    structure_dict = [paragraph.dict() for paragraph in essay_structure]
+        combined_paragraphs = []
+        combined_citations = []
 
-    better_essay = essay_compiler_agent.compile_essay(structure_dict, whole_essay)
+        for paragraph_compilation in compiled_essay.essay:
+            combined_paragraphs.append(paragraph_compilation.paragraph)
+            combined_citations.extend(paragraph_compilation.references)
 
-    st.subheader("Final Compiled Essay:")
-    st.write(better_essay)
+        st.subheader("Compiled Essay:")
+        st.write("\n\n".join(combined_paragraphs))
+        st.subheader("Citations:")
+        st.write("\n".join(combined_citations))
 
-    # Step 10: Introducing Critiques
-    critique_agent = CritiqueAgent(model_name)
-    criticism = critique_agent.critique_essay(structure_dict, better_essay)
+        # Step 9: Putting Essay Together 
+        st.header("Step 9: Finalize the Essay")
+        whole_essay = "\n\n".join(combined_paragraphs) + "\n\n" + "\n".join(combined_citations)
+        essay_compiler_agent = EssayCompiler(model_name)
+        
+        # Convert essay_structure to a list of dictionaries
+        structure_dict = [paragraph.dict() for paragraph in essay_structure]
 
-    st.subheader("Essay Critique:")
-    st.write(criticism)
+        better_essay = essay_compiler_agent.compile_essay(structure_dict, whole_essay)
 
-    # Step 11: Finalise the essay based on the critique
-    finalise_essay_writer = FinaliseEssayWriter(model_name)
-    finalised_essay = finalise_essay_writer.finalise_essay(structure_dict, better_essay, criticism)
+        st.subheader("Final Compiled Essay:")
+        st.write(better_essay)
 
-    st.subheader("Finalised Essay:")
-    st.write(finalised_essay)
+        # Step 10: Introducing Critiques
+        st.header("Step 10: Critique the Essay")
+        critique_agent = CritiqueAgent(model_name)
+        criticism = critique_agent.critique_essay(structure_dict, better_essay)
 
-    # Step 12: Save the final essay, critique, and finalised version
-    with open("final_essay_complete.txt", "w") as f:
-        f.write("--- Original Essay ---\n\n")
-        f.write(better_essay)
-        f.write("\n\n--- Essay Critique ---\n\n")
-        f.write(criticism)
-        f.write("\n\n--- Finalised Essay ---\n\n")
-        f.write(finalised_essay)
+        st.subheader("Essay Critique:")
+        st.write(criticism)
 
-    st.success("Final essay, critique, and finalised version have been saved to 'final_essay_complete.txt'")
+        # Step 11: Finalise the essay based on the critique
+        st.header("Step 11: Finalize the Essay")
+        finalise_essay_writer = FinaliseEssayWriter(model_name)
+        finalised_essay = finalise_essay_writer.finalise_essay(structure_dict, better_essay, criticism)
+
+        st.subheader("Finalised Essay:")
+        st.write(finalised_essay)
+
+        # Step 12: Save the final essay, critique, and finalised version
+        st.header("Step 12: Save the Final Essay")
+        with open("final_essay_complete.txt", "w") as f:
+            f.write("--- Original Essay ---\n\n")
+            f.write(better_essay)
+            f.write("\n\n--- Essay Critique ---\n\n")
+            f.write(criticism)
+            f.write("\n\n--- Finalised Essay ---\n\n")
+            f.write(finalised_essay)
+
+        st.success("Final essay, critique, and finalised version have been saved to 'final_essay_complete.txt'")
+
+        # Clean up temporary files
+        for temp_file in temp_files:
+            os.unlink(temp_file)
+
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
+        logging.error(f"Error: {str(e)}", exc_info=True)
+        st.stop()
 
 # Run the app with: streamlit run app_streamlit.py

@@ -1,18 +1,25 @@
-from openai import OpenAI # Assuming OpenAI's library is being used, install with `pip install openai`
+from openai import OpenAI
 from pydantic import BaseModel
 from fundations.foundation import LLMResponse
 import os
+from dotenv import load_dotenv
 
-os.environ['OPENAI_API_KEY'] = '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'
+# Load environment variables from .env file
+load_dotenv()
 
 class LLMResponsePro(LLMResponse):
     def __init__(self, model_name):
         """
         Initialize the LLMResponse with the given model name.
         """
-        self.model_name = model_name #Eg "gpt-4o-2024-08-06"
-        self.client = OpenAI()
-        # Ensure your API key is set in the environment
+        self.model_name = model_name  # Eg "gpt-4o-2024-08-06"
+        
+        # Get the API key from environment variables
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY not found in environment variables")
+        
+        self.client = OpenAI(api_key=api_key)
 
     def structured_output(self, schema_class, user_prompt, system_prompt):
         """

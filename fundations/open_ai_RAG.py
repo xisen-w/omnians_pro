@@ -6,13 +6,22 @@ import numpy as np
 import sys
 import PyPDF2  # To extract text from PDF
 from typing import Union, List
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 # Add the parent directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fundations.foundation import LLMResponse
-os.environ['OPENAI_API_KEY'] = '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'
 
-client = openai.OpenAI()
+# Get the API key from environment variables
+api_key = os.getenv('OPENAI_API_KEY')
+if not api_key:
+    raise ValueError("OPENAI_API_KEY not found in environment variables")
+
+client = openai.OpenAI(api_key=api_key)
 
 # Updated embedding models
 EMBEDDING_MODEL = "text-embedding-3-small"  # Updated model
@@ -242,7 +251,6 @@ if __name__ == "__main__":
     for text, similarity, source, page in top_texts:
         print(f"Source: {source}, Page: {page}, Similarity: {similarity:.4f}")
         print(f"Text: {text[:100]}...")  # Print first 100 characters of each text
-
 
 # # Example usage
 # if __name__ == "__main__":
