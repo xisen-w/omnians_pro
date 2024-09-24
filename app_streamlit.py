@@ -99,14 +99,14 @@ analysis_format = st.multiselect(
 col1, col2 = st.columns(2)
 
 # Automate button
-if col1.button("Automate"):
+if col1.button("OmniAns Your Answer"):
     st.session_state.current_step = len(steps) - 1  # Set to last step to run all
     st.rerun()  # Force a rerun to update the sidebar
 
-# Co-pilot button
-if col2.button("Next Step"):
-    st.session_state.current_step = min(st.session_state.current_step + 1, len(steps) - 1)
-    st.rerun()  # Force a rerun to update the sidebar
+# # Co-pilot button
+# if col2.button("Next Step"):
+#     st.session_state.current_step = min(st.session_state.current_step + 1, len(steps) - 1)
+#     st.rerun()  # Force a rerun to update the sidebar
 
 # Display current step
 st.write(f"Current Step: {steps[st.session_state.current_step]}")
