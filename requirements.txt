@@ -6,16 +6,17 @@ python-dotenv==1.0.1
 # OpenAI
 openai==1.42.0
 
-# Data processing
+# Data processing and scientific computing
 pandas==2.2.2
 numpy==1.26.4
+scipy==1.13.1  # Added SciPy
 
 # PDF processing
 PyPDF2==3.0.1
+PyMuPDF==1.23.26  # This includes the fitz module
 
 # Machine Learning and NLP
 pydantic==2.8.2
-PyMuPDF==1.23.26  # This includes the fitz module
 
 # Vector stores and embeddings
 llama-index-core==0.11.1
@@ -23,6 +24,4 @@ llama-index-readers-smart-pdf-loader==0.2.0
 
 # Web scraping
 beautifulsoup4==4.12.3
-
-# Requests (likely needed for web scraping)
 requests==2.31.0
