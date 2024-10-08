@@ -19,3 +19,9 @@ pydantic==2.8.2
 # Vector stores and embeddings
 llama-index-core==0.11.1
 llama-index-readers-smart-pdf-loader==0.2.0
+
+# Web scraping
+beautifulsoup4==4.12.3
+
+# Requests (likely needed for web scraping)
+requests==2.31.0
