@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO)
 
 # Helper function to get filename from path
 def get_filename(path):
-    return os.path.basename(path)
+    return original_file_names.get(path, os.path.basename(path))
 
 # Set page config for wide layout
 st.set_page_config(layout="wide")
@@ -122,10 +122,12 @@ try:
     
     # Create temporary files for uploaded documents
     temp_files = []
+    original_file_names = {}
     for uploaded_file in uploaded_files:
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as tmp_file:
             tmp_file.write(uploaded_file.getvalue())
             temp_files.append(tmp_file.name)
+            original_file_names[tmp_file.name] = uploaded_file.name
     
     doc_sources.extend(temp_files)
 

@@ -39,7 +39,7 @@ class StructureRevisor(LLMAgent):
         # Use the perform_action method from LLMAgent 
         response = self.perform_action(
             system_prompt=system_prompt,
-            user_prompt="Please generate it well! Thank you. Make it insightful and comprehensive. Make it logical.",
+            user_prompt="Stay critical. Restructure the whole essay from a new perspective, unless you think that the current one is very very good. Think step by step. Stay very critical and constructive. Your responsibility is to comprehend the background information and distill these information to generate a much better framework.",
             schema_class=EssayStructureSchema,
         )
 

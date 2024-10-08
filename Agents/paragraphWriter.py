@@ -68,7 +68,10 @@ class ParagraphWriter(LLMAgent):
         compiled_paragraphs = []
         
         for idx, para_struct in enumerate(essay_structure):
-            context = context_list[idx]  # Get the corresponding context for the paragraph
+            if idx < len(context_list):
+                context = context_list[idx]  # Get the corresponding context for the paragraph
+            else:
+                context = "No specific context available for this paragraph."
             compiled_para = self.compile_paragraph(para_struct, context)
             if compiled_para:
                 compiled_paragraphs.append(compiled_para)

@@ -22,3 +22,5 @@ class InsightAnalyst(LLMAgent):
         )
 
         return response.sub_questions if response else None
+    
+    
