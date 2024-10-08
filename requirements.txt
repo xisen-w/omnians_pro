@@ -1,29 +1,21 @@
 # Core dependencies
 streamlit==1.38.0
 flask==3.0.3
-flask-cors==4.0.1
 python-dotenv==1.0.1
 
 # OpenAI
 openai==1.42.0
 
-# Data processing and analysis
+# Data processing
 pandas==2.2.2
 numpy==1.26.4
-scipy==1.13.1
 
 # PDF processing
 PyPDF2==3.0.1
-llama-index-readers-smart-pdf-loader==0.2.0
 
 # Machine Learning and NLP
-transformers==4.44.2
-torch==2.4.1
-faiss-cpu==1.7.3
 pydantic==2.8.2
 
 # Vector stores and embeddings
 llama-index-core==0.11.1
-
-# Utilities
-tqdm==4.66.5
+llama-index-readers-smart-pdf-loader==0.2.0
