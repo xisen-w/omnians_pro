@@ -3,9 +3,16 @@ from pydantic import BaseModel
 from fundations.foundation import LLMResponse
 import os
 from dotenv import load_dotenv
+import streamlit as st
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Try to get the API key from Streamlit secrets first, then fall back to environment variable
+openai_api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+
+if not openai_api_key:
+    raise ValueError("OPENAI_API_KEY not found in Streamlit secrets or environment variables")
 
 class LLMResponsePro(LLMResponse):
     def __init__(self, model_name):
@@ -14,12 +21,8 @@ class LLMResponsePro(LLMResponse):
         """
         self.model_name = model_name  # Eg "gpt-4o-2024-08-06"
         
-        # Get the API key from environment variables
-        api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY not found in environment variables")
-        
-        self.client = OpenAI(api_key=api_key)
+        # Use the openai_api_key in your OpenAI client initialization
+        self.client = OpenAI(api_key=openai_api_key)
 
     def structured_output(self, schema_class, user_prompt, system_prompt):
         """

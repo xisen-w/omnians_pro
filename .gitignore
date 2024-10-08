@@ -24,6 +24,8 @@ __pycache__/
 # C extensions
 *.so
 
+.streamlit
+
 # Distribution / packaging
 .Python
 build/
