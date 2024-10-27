@@ -8,8 +8,11 @@ import streamlit as st
 # Load environment variables from .env file
 load_dotenv()
 
-# Try to get the API key from Streamlit secrets first, then fall back to environment variable
-openai_api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+try:
+    import streamlit as st
+    openai_api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+except ImportError:
+    openai_api_key = os.getenv("OPENAI_API_KEY")
 
 if not openai_api_key:
     raise ValueError("OPENAI_API_KEY not found in Streamlit secrets or environment variables")
@@ -44,4 +47,3 @@ class LLMResponsePro(LLMResponse):
         except Exception as e:
             print(f"An error occurred: {e}")
             return None
-
