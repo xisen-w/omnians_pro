@@ -2,6 +2,8 @@ import streamlit as st
 import sys
 import os
 import logging
+import redis
+import json
 from utils.schemas import SubQuestionSchema, EssayStructureSchema, LiteratureRelationshipSchema, ParagraphSchema
 import tempfile
 import re
@@ -22,6 +24,25 @@ from Agents.finaliseEssayWriter import FinaliseEssayWriter
 
 # Add this near the top of your script, after the imports
 logging.basicConfig(level=logging.INFO)
+
+# Redis connection
+redis_url = os.environ.get('REDIS_URL')
+redis_client = redis.from_url(redis_url)
+
+# Authentication function
+def authenticate(invitation_code):
+    return redis_client.sismember('valid_invitation_codes', invitation_code)
+
+# Store response in Redis
+def store_response(user_id, response_type, data):
+    key = f"user:{user_id}:{response_type}"
+    redis_client.set(key, json.dumps(data))
+
+# Retrieve response from Redis
+def get_response(user_id, response_type):
+    key = f"user:{user_id}:{response_type}"
+    data = redis_client.get(key)
+    return json.loads(data) if data else None
 
 # Helper function to get filename from path
 def get_filename(path):
@@ -79,6 +100,22 @@ st.session_state.current_step = steps.index(selected_step)
 # Main content
 st.title("Research Essay Assistant")
 
+# Authentication
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    invitation_code = st.text_input("Enter your invitation code:")
+    if st.button("Login"):
+        if authenticate(invitation_code):
+            st.session_state.authenticated = True
+            st.session_state.user_id = invitation_code  # Using invitation code as user ID for simplicity
+            st.success("Authentication successful!")
+            st.rerun()
+        else:
+            st.error("Invalid invitation code")
+    st.stop()
+
 # Input for research question
 research_question = st.text_input("Enter your research question:")
 
@@ -95,18 +132,24 @@ analysis_format = st.multiselect(
     default=['Essay']
 )
 
-# Create columns for Automate and Co-pilot buttons
-col1, col2 = st.columns(2)
+# Create columns for different buttons
+col1, col2, col3, col4 = st.columns(4)
 
-# Automate button
-if col1.button("OmniAns Your Answer"):
-    st.session_state.current_step = len(steps) - 1  # Set to last step to run all
-    st.rerun()  # Force a rerun to update the sidebar
+if col1.button("Literature Review"):
+    st.session_state.current_step = 5  # Set to Literature Analysis step
+    st.rerun()
 
-# # Co-pilot button
-# if col2.button("Next Step"):
-#     st.session_state.current_step = min(st.session_state.current_step + 1, len(steps) - 1)
-#     st.rerun()  # Force a rerun to update the sidebar
+if col2.button("Fully Automate"):
+    st.session_state.current_step = len(steps) - 1  # Set to last step
+    st.rerun()
+
+if col3.button("Criticize & Improve"):
+    st.session_state.current_step = 9  # Set to Essay Critique step
+    st.rerun()
+
+if col4.button("Next Step"):
+    st.session_state.current_step = min(st.session_state.current_step + 1, len(steps) - 1)
+    st.rerun()
 
 # Display current step
 st.write(f"Current Step: {steps[st.session_state.current_step]}")
@@ -134,9 +177,11 @@ try:
     # Step 1: Generate sub-questions using InsightAnalyst
     if st.session_state.current_step >= 1:
         st.header("🧠 Insight Analyst")
-        if st.session_state.sub_questions is None:
+        sub_questions = get_response(st.session_state.user_id, 'sub_questions')
+        if sub_questions is None:
             insight_analyst = InsightAnalyst(model_name)
-            st.session_state.sub_questions = insight_analyst.generate_sub_questions(research_question)
+            sub_questions = insight_analyst.generate_sub_questions(research_question)
+            store_response(st.session_state.user_id, 'sub_questions', sub_questions)
         
         # Display sub-questions in a structured manner
         sub_questions_schema = SubQuestionSchema(sub_questions=st.session_state.sub_questions)
@@ -362,3 +407,12 @@ except Exception as e:
     st.stop()
 
 # Run the app with: streamlit run app_streamlit.py
+
+# At the end of the script, add:
+if st.button("Clear Stored Data"):
+    keys = redis_client.keys(f"user:{st.session_state.user_id}:*")
+    if keys:
+        redis_client.delete(*keys)
+        st.success("All stored data has been cleared.")
+    else:
+        st.info("No data to clear.")
