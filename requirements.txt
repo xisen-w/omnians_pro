@@ -25,3 +25,8 @@ llama-index-readers-smart-pdf-loader==0.2.0
 # Web scraping
 beautifulsoup4==4.12.3
 requests==2.31.0
+
+Flask
+SQLAlchemy
+psycopg2-binary
+python-dotenv

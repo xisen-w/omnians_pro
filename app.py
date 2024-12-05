@@ -16,9 +16,14 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all domains on all routes
 
-# Database setup
-DATABASE_URL = os.getenv('DATABASE_URL')
-engine = create_engine(DATABASE_URL)
+# Supabase Postgres connection
+DATABASE_URL = os.getenv("POSTGRES_URL_NON_POOLING")
+
+if not DATABASE_URL:
+    raise ValueError("No DATABASE_URL set for Flask application")
+
+# Create SQLAlchemy engine
+engine = create_engine(DATABASE_URL.replace("postgres://", "postgresql://"))
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -97,6 +102,9 @@ def analyze(research_question, pdf_files):
 
     return response
 
+@app.route('/')
+def hello():
+    return "Hello, Supabase!"
+
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(debug=True)
