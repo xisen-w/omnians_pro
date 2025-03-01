@@ -27,45 +27,33 @@ class SearchAgent:
             dict: Dictionary mapping each sub-question to its search results
         """
         search_results = {}
+        total_questions = len(sub_questions)
         
-        for question in sub_questions:
-            # Get initial search results
-            search_data = self.web_retriever.search_and_get_content(question)
-            urls = search_data["urls"]
-            contents = search_data["contents"]
-            
-            # Validate and filter results
-            validated_urls = []
-            for url, content in zip(urls, contents):
-                # Prepare prompt for relevance check
-                prompt = f"""
-                Please evaluate if this content is relevant to the question.
-                
-                Question: {question}
-                
-                Content from {url}:
-                {content[:500]}...
-                
-                Evaluate the relevance and provide a score.
-                """
-                
-                # Get LLM evaluation
-                response = self.llm.perform_action(
-                    system_prompt="You are an expert at evaluating content relevance.",
-                    schema_class=SearchResultSchema,
-                    user_prompt=prompt
-                )
-                
-                if response and response.is_relevant:
-                    validated_urls.append({
-                        'url': url,
-                        'relevance_score': response.relevance_score
-                    })
-            
-            # Sort by relevance score and take top 2
-            validated_urls.sort(key=lambda x: x['relevance_score'], reverse=True)
-            search_results[question] = validated_urls[:self.urls_per_question]
+        print(f"\nStarting search process for {total_questions} questions...")
         
+        for i, question in enumerate(sub_questions, 1):
+            print(f"\n{'='*50}")
+            print(f"Processing question {i}/{total_questions}")
+            print(f"Question: {question}")
+            print(f"{'='*50}")
+            
+            try:
+                system_prompt = "You are a helpful assistant that searches and summarizes information."
+                print(f"Searching and processing question...")
+                response = self.llm.llm_output_with_search(question, system_prompt)
+                
+                # Print preview of the content (not the whole response dictionary)
+                print(f"Response preview: {response['content'][:200]}...\n")
+                search_results[question] = response
+                print(f"Sources used:")
+                for url in response['sources']:
+                    print(f"- {url}")
+                
+            except Exception as e:
+                print(f"Error processing question {i}: {str(e)}")
+                search_results[question] = f"Error: {str(e)}"
+                continue
+                
         self.previous_result = search_results
         return search_results
 
@@ -77,12 +65,16 @@ class SearchAgent:
             return "No search results available"
             
         output = []
-        for question, urls in self.previous_result.items():
-            output.append(f"Sub-question: {question}")
-            for i, url_info in enumerate(urls, 1):
-                output.append(f"  URL {i}: {url_info['url']}")
-                output.append(f"  Relevance Score: {url_info['relevance_score']:.2f}")
-            output.append("")
+        for question, result in self.previous_result.items():
+            output.append(f"\nSub-question: {question}")
+            if isinstance(result, dict):
+                output.append(f"Answer: {result['content']}")
+                output.append("\nSources:")
+                for url in result['sources']:
+                    output.append(f"- {url}")
+            else:
+                output.append(f"Answer: {result}")  # For error cases
+            output.append("-" * 50)
             
         return "\n".join(output)
 
@@ -90,18 +82,30 @@ class SearchAgent:
 if __name__ == "__main__":
     from Agents.insightAnalyst import InsightAnalyst
     
+    print("\n=== Search Agent Process Started ===")
+    
     # Initialize agents
     model_name = "gpt-4o-mini-2024-07-18"
+    print(f"\nInitializing agents with model: {model_name}")
     insight_analyst = InsightAnalyst(model_name)
     search_agent = SearchAgent(model_name)
     
     # Generate sub-questions
     research_question = "How has artificial intelligence impacted modern healthcare?"
+    print(f"\nMain research question: {research_question}")
+    
+    print("\nGenerating sub-questions...")
     sub_questions = insight_analyst.generate_sub_questions(research_question)
+    print("\nGenerated sub-questions:")
+    for i, q in enumerate(sub_questions, 1):
+        print(f"{i}. {q}")
     
     # Search for relevant URLs
+    print("\nSearching for relevant URLs...")
     search_results = search_agent.search_by_subquestions(sub_questions)
     
     # Print results
-    print("Search Results:")
+    print("\n=== Final Search Results ===")
     print(search_agent.to_string())
+    
+    print("\n=== Search Agent Process Completed ===")

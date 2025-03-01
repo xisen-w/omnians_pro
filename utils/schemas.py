@@ -7,7 +7,7 @@ class SubQuestionSchema(BaseModel):
 # Schema for Search Result
 class SearchResultSchema(BaseModel):
     is_relevant: bool = Field(..., description="Whether the URL is relevant to the question")
-    relevance_score: float = Field(..., description="Relevance score from 0 to 1", ge=0, le=1)
+    relevance_score: float = Field(..., description="Relevance score from 0 to 1")
 
 # Schema for Paragraph Structure
 class ParagraphSchema(BaseModel):

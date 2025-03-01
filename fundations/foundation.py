@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
-from .retrieval import WebRetrieval
+from fundations.retrieval import WebRetrieval
 
 # Load environment variables from .env file
 load_dotenv()
@@ -50,7 +50,9 @@ class LLMResponse:
         """
         Get LLM response with web search results
         """
-        search_results = self.retrieval.search_and_get_content(user_prompt)
+        web_retriever = WebRetrieval()
+
+        search_results = web_retriever.search_and_get_content(user_prompt)
         
         # prepare context
         context_parts = []

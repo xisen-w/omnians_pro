@@ -3,7 +3,7 @@ from Agents.basicAgents import LLMAgent
 
 class InsightAnalyst(LLMAgent):
     def __init__(self, model_name):
-        super().__init__(model_name)  # Initialize the base LLMAgent class
+        super().__init__(model_name="gpt-4o")  # Initialize the base LLMAgent class
 
     def generate_sub_questions(self, research_question: str):
         prompt_template = """
@@ -12,6 +12,10 @@ class InsightAnalyst(LLMAgent):
         {user_prompt}
 
         Your task is to generate a list of sub-questions that are related to this and will help in building a professional research thesis.
+
+        You are here to do deeep research. Hence, the questions should be such that they are not obvious and require a lot of research to answer. 
+        
+        They should target the research question in different aspects, yet gradually increasing the depth and complexity of the questions to ask for details.
         """
 
         # Use the perform_action method from LLMAgent
