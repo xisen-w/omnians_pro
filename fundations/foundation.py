@@ -1,25 +1,41 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Import necessary modules (assuming OpenAI or other APIs might be used)
 from openai import OpenAI
+import os
+from dotenv import load_dotenv
+from retrieval import WebRetrieval
+
+# Load environment variables from .env file
+load_dotenv()
 
 class LLMResponse:
     def __init__(self, model_name):
         """
         Initialize the LLMResponse with the given model name.
+        
+        Args:
+            model_name (str): Name of the model to use
         """
-        self.model_name = model_name #Eg "gpt-4o-2024-08-06"
-        self.client = OpenAI()
-        # Ensure your API key is set in the environment
+        self.model_name = model_name
+        
+        if model_name == "deepseek-chat":
+            self.client = OpenAI(
+                api_key=os.getenv("DEEPSEEK_API_KEY"),
+                base_url="https://api.deepseek.com"
+            )
+        else:
+            self.client = OpenAI()
+        self.retrieval = WebRetrieval()
 
     def llm_output(self, user_prompt, system_prompt):
-        client = OpenAI()
-        completion = client.chat.completions.create(
+        completion = self.client.chat.completions.create(
             model=self.model_name,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": user_prompt
-                }
+                {"role": "user", "content": user_prompt}
             ]
         )
         return completion.choices[0].message
@@ -29,6 +45,30 @@ class LLMResponse:
         Structure the output according to the provided schema, user prompt, and system prompt.
         """
         pass
+
+    def llm_output_with_search(self, user_prompt, system_prompt):
+        """
+        Get LLM response with web search results
+        """
+        search_results = self.retrieval.search_and_get_content(user_prompt)
+        
+        # prepare context
+        context_parts = []
+        for i, (content, url) in enumerate(zip(search_results["contents"], search_results["urls"])):
+            context_parts.append(f"[Source {i+1}]: {url}\nContent: {content}")
+        
+        context = "\n\n".join(context_parts)
+        enhanced_prompt = f"Context from web search:\n{context}\n\nQuestion: {user_prompt}\n\nPlease provide an answer based on the above context, and cite the source URLs in your response."
+        
+        response = self.llm_output(enhanced_prompt, system_prompt)
+        
+        # prepare response
+        full_response = {
+            "content": response.content,
+            "sources": search_results["urls"]
+        }
+        
+        return full_response
 
 
 class Research:
@@ -104,17 +144,48 @@ class OmniAnsGraph:
 
 # Example usage
 if __name__ == "__main__":
-    # Initialize research with a research question and background context
-    research = Research(research_question="What is the impact of AI on job automation?", background_context="The rise of AI technologies in various industries.")
+    try:
+        # Test OpenAI
+        openai_llm = LLMResponse("gpt-4o-2024-08-06")
+        openai_response = openai_llm.llm_output(
+            user_prompt="What is artificial intelligence?",
+            system_prompt="You are a helpful AI expert."
+        )
+        print("\nOpenAI Response:")
+        print(openai_response.content)
 
-    # Assuming you have some raw materials to skim
-    raw_materials = "Various articles, papers, and books on AI and automation."
-    research.skimmed_result = SkimmedResult(raw_reading_materials=raw_materials)
-    research.skimmed_result.skim_materials()
+        # Test DeepSeek
+        deepseek_llm = LLMResponse("deepseek-chat")
+        deepseek_response = deepseek_llm.llm_output(
+            user_prompt="What is artificial intelligence?",
+            system_prompt="You are a helpful AI expert."
+        )
+        print("\nDeepSeek Response:")
+        print(deepseek_response.content)
 
-    # Generate outline and draft
-    research.create_outline()
-    research.draft_paper()
+        # Test OpenAI with web search
+        print("\nTesting OpenAI with web search...")
+        openai_search_response = openai_llm.llm_output_with_search(
+            user_prompt="What are the latest developments in quantum computing?",
+            system_prompt="You are a helpful AI expert. Please provide an up-to-date answer."
+        )
+        print("\nOpenAI Response with web search:")
+        print(openai_search_response["content"])
+        print("\nSources used:")
+        for url in openai_search_response["sources"]:
+            print(f"- {url}")
 
-    # Print final draft (for example purposes, normally you'd have more steps)
-    print(research.final_draft)
+        # Test DeepSeek with web search
+        print("\nTesting DeepSeek with web search...")
+        deepseek_search_response = deepseek_llm.llm_output_with_search(
+            user_prompt="What are the latest developments in quantum computing?",
+            system_prompt="You are a helpful AI expert. Please provide an up-to-date answer."
+        )
+        print("\nDeepSeek Response with web search:")
+        print(deepseek_search_response["content"])
+        print("\nSources used:")
+        for url in deepseek_search_response["sources"]:
+            print(f"- {url}")
+
+    except Exception as e:
+        print(f"Error occurred: {e}")

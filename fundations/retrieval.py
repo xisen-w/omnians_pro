@@ -3,6 +3,13 @@
 # from transformers import AutoTokenizer, AutoModel
 # import torch
 # import logging
+import requests
+from tavily import TavilyClient
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # # Logging setup
 # logging.basicConfig(level=logging.INFO)
@@ -77,3 +84,53 @@
 #             logger.info(f"No documents were retrieved for the query: {query}")
 #     except Exception as e:
 #         logger.error(f"Error in the main query process: {e}")
+
+class WebRetrieval:
+    def __init__(self):
+        self.tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+        self.jina_headers = {
+            'Authorization': f'Bearer {os.getenv("JINA_API_KEY")}'
+        }
+
+    def search_urls(self, query: str, max_results: int = 10) -> list:
+        """
+        Search for URLs using Tavily
+        """
+        try:
+            search_result = self.tavily.search(query)
+            return [result['url'] for result in search_result['results'][:max_results]]
+        except Exception as e:
+            print(f"Tavily search error: {e}")
+            return []
+
+    def get_content(self, url: str) -> str:
+        """
+        Get content from URL using Jina AI
+        """
+        try:
+            jina_url = f'https://r.jina.ai/{url}'
+            response = requests.get(jina_url, headers=self.jina_headers)
+            return response.text
+        except Exception as e:
+            print(f"Jina AI error: {e}")
+            return ""
+
+    def search_and_get_content(self, query: str) -> dict:
+        """
+        Search for URLs and get their content
+        Returns a dictionary with content and URLs
+        """
+        urls = self.search_urls(query)
+        contents = []
+        found_urls = []
+        
+        for url in urls:
+            content = self.get_content(url)
+            if content:
+                contents.append(content)
+                found_urls.append(url)
+        
+        return {
+            "contents": contents,
+            "urls": found_urls
+        }
