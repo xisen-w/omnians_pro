@@ -1,4 +1,4 @@
-# Jina AI
+# Jina AI.reader
 
 import requests
 
@@ -11,6 +11,78 @@ response = requests.get(url, headers=headers)
 
 print(response.text)
 
+# Jina AI.deep search
+import json
+import requests
+
+url = "https://deepsearch.jina.ai/v1/chat/completions"
+headers = {
+"Content-Type": "application/json"
+}
+
+data = {
+"model": "jina-deepsearch-v1",
+"messages": [
+{
+"role": "user",
+"content": "Hi!"
+},
+{
+"role": "assistant",
+"content": "Hi, how can I help you?"
+},
+{
+"role": "user",
+"content": "what's the latest blog post from jina ai?"
+}
+],
+"stream": True,
+"reasoning_effort": "low"
+}
+
+response = requests.post(url, headers=headers, data=json.dumps(data))
+
+print(response.text)
+{
+  "id": "1740535470162",
+  "object": "chat.completion.chunk",
+  "created": 1740535470,
+  "model": "jina-deepsearch-v1",
+  "system_fingerprint": "fp_1740535470162",
+  "choices": [
+    {
+      "index": 0,
+      "delta": {
+        "content": ""
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 19491,
+    "completion_tokens": 8195,
+    "total_tokens": 27588
+  },
+  "visitedURLs": [
+    "https://jina.ai/news",
+    "https://jina.ai/news/a-practical-guide-to-implementing-deepsearch-deepresearch",
+    "https://elastic.co/search-labs/blog/jina-ai-embeddings-rerank-model-open-inference-api",
+    "https://medium.com/@kawsarlog/jina-ais-reader-api-a-game-changer-for-developers-be66154b2692",
+    "https://jina.ai/news/jina-embeddings-v3-a-frontier-multilingual-embedding-model",
+    "https://x.com/jinaai_?lang=en",
+    "https://jina.ai/",
+    "https://jina.ai/deepsearch",
+    "https://medium.com/@tossy21/trying-out-jina-ais-node-deepresearch-c5b55d630ea6",
+    "https://github.com/jina-ai/node-DeepResearch",
+    "https://x.com/hxiao/status/1886252001945854235"
+  ],
+  "readURLs": [
+    "https://jina.ai/news",
+    "https://jina.ai/news/a-practical-guide-to-implementing-deepsearch-deepresearch"
+  ]
+}
+
 
 # Tavily AI
 
@@ -20,3 +92,4 @@ tavily_client = TavilyClient(api_key="tvly-YOUR_API_KEY")
 response = tavily_client.search("Who is Leo Messi?")
 
 print(response)
+

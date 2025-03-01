@@ -1,6 +1,6 @@
 from openai import OpenAI
 from pydantic import BaseModel
-from fundations.foundation import LLMResponse
+from .foundation import LLMResponse
 import os
 from dotenv import load_dotenv
 import streamlit as st

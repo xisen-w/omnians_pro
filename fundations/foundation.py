@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
-from retrieval import WebRetrieval
+from .retrieval import WebRetrieval
 
 # Load environment variables from .env file
 load_dotenv()
@@ -145,14 +145,14 @@ class OmniAnsGraph:
 # Example usage
 if __name__ == "__main__":
     try:
-        # Test OpenAI
-        openai_llm = LLMResponse("gpt-4o-2024-08-06")
-        openai_response = openai_llm.llm_output(
-            user_prompt="What is artificial intelligence?",
-            system_prompt="You are a helpful AI expert."
-        )
-        print("\nOpenAI Response:")
-        print(openai_response.content)
+        # # Test OpenAI
+        # openai_llm = LLMResponse("gpt-4o-2024-08-06")
+        # openai_response = openai_llm.llm_output(
+        #     user_prompt="What is artificial intelligence?",
+        #     system_prompt="You are a helpful AI expert."
+        # )
+        # print("\nOpenAI Response:")
+        # print(openai_response.content)
 
         # Test DeepSeek
         deepseek_llm = LLMResponse("deepseek-chat")
@@ -164,16 +164,16 @@ if __name__ == "__main__":
         print(deepseek_response.content)
 
         # Test OpenAI with web search
-        print("\nTesting OpenAI with web search...")
-        openai_search_response = openai_llm.llm_output_with_search(
-            user_prompt="What are the latest developments in quantum computing?",
-            system_prompt="You are a helpful AI expert. Please provide an up-to-date answer."
-        )
-        print("\nOpenAI Response with web search:")
-        print(openai_search_response["content"])
-        print("\nSources used:")
-        for url in openai_search_response["sources"]:
-            print(f"- {url}")
+        # print("\nTesting OpenAI with web search...")
+        # openai_search_response = openai_llm.llm_output_with_search(
+        #     user_prompt="What are the latest developments in quantum computing?",
+        #     system_prompt="You are a helpful AI expert. Please provide an up-to-date answer."
+        # )
+        # print("\nOpenAI Response with web search:")
+        # print(openai_search_response["content"])
+        # print("\nSources used:")
+        # for url in openai_search_response["sources"]:
+        #     print(f"- {url}")
 
         # Test DeepSeek with web search
         print("\nTesting DeepSeek with web search...")

@@ -12,19 +12,34 @@ from Agents.essayCompilor import EssayCompiler
 from fundations.open_ai_RAG import Citation_Retriever
 from Agents.critiqueAgent import CritiqueAgent
 from Agents.finaliseEssayWriter import FinaliseEssayWriter
+from Agents.searchAgent import SearchAgent
 
 if __name__ == "__main__":
-    model_name = "gpt-4o-mini-2024-07-18"  # Replace with your actual model name
+    model_name = "deepseek-chat"  # Replace with your actual model name
 
     # Step 1: Generate sub-questions using InsightAnalyst
     insight_analyst = InsightAnalyst(model_name)
     research_question = "Winnie Lai argues that the seemingly innocuous act of singing 'Happy Birthday' can become a 'communal and political action' (2018: 80). Taking this as your starting point, consider the ways in which music and sound more generally have been designed and/or harnessed for the purpose of protest."
     sub_questions = insight_analyst.generate_sub_questions(research_question)
     print("Sub-Questions:", sub_questions)
+    
+    # Step 1.5: Search relevant URLs for each sub-question
+    print("\nSearching relevant URLs for each sub-question...")
+    search_agent = SearchAgent(model_name)
+    search_results = search_agent.search_by_subquestions(sub_questions)
+    print("Search Results:")
+    print(search_agent.to_string())
 
+    # Add search results to background info
+    url_background = "\nRelevant Online Sources:\n"
+    for question, urls in search_results.items():
+        url_background += f"\nFor question: {question}\n"
+        for url_info in urls:
+            url_background += f"- {url_info['url']} (Relevance: {url_info['relevance_score']:.2f})\n"
+    
     # Step 2: Structure the essay using StructuralOutlining
     outliner = SR(model_name)
-    essay_structure = outliner.structure_essay(research_question, sub_questions)
+    essay_structure = outliner.structure_essay(research_question, sub_questions, url_background)
     print("Essay Structure:", outliner.to_string())
 
     # Step 3: Iterate through the PDFs using the PDF Summary Agents & Compile A Background Info
@@ -44,6 +59,9 @@ if __name__ == "__main__":
         summary = pdf_summary_agent.summarize_pdf(pdf_path=pdf_file)
         print(f"Summary: {summary}")
         background_info += f"\nSummary from {pdf_file}:\n{summary}\n"
+
+    # Add URL search results to background info
+    background_info += url_background
 
     # Step 4: Use the Background Info to Revise the Structure
     print("\nCompiling background information into essay structure...")
